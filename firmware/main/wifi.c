@@ -19,12 +19,12 @@
 #include "freertos/event_groups.h"
 #include "nvs_flash.h"
 #include "tcpip_adapter.h"
+
 #include <string.h>
 
-static const char *TAG = "wifi_station";
+static const char TAG[] = "wifi";
 
 #include "wifi.h"
-
 #include "secret.h"
 
 #if !defined(WIFI_SSID) || !defined(WIFI_PASS)

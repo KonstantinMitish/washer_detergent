@@ -14,10 +14,24 @@
 
 #include <stdio.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "esp_log.h"
+
 #include "wifi.h"
+#include "server.h"
+
+static const char TAG[] = "main";
 
 int app_main(void) {
-    printf("Hello world!\n");
+    ESP_LOGI(TAG, "Hello world!");
     wifi_connect();
+    server_init();
+
+    while (1) {
+        server_response();
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
     return 0;
 }
