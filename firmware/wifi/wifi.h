@@ -3,8 +3,8 @@
  *    Konstantin Mitish
  *************************************************************/
 
-/* FILE NAME   : main.c
- * PURPOSE     : Entry point module.
+/* FILE NAME   : wifi.c
+ * PURPOSE     : Wifi connection module.
  * PROGRAMMER  : KM6.
  * LAST UPDATE : 29.05.2025.
  *
@@ -12,12 +12,9 @@
  * Konstantin Mitish
  */
 
-#include <stdio.h>
+#ifndef __WIFI_H__
+#define __WIFI_H__
 
-#include "wifi/wifi.h"
+void wifi_connect(void);
 
-int app_main(void) {
-    printf("Hello world!\n");
-    wifi_connect();
-    return 0;
-}
+#endif /* __WIFI_H__ */
