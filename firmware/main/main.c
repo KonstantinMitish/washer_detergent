@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 
-#include "wifi/wifi.h"
+#include "wifi.h"
 
 int app_main(void) {
     printf("Hello world!\n");
