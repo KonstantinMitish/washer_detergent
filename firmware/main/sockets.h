@@ -15,14 +15,18 @@ typedef unsigned long IP;
 
 SOCKET socket_udp(int port);
 
-SOCKET socket_tcp(IP ip, int port);
+SOCKET socket_tcp(int port);
+
+SOCKET socket_accept(SOCKET s, IP *ip);
 
 bool socket_has_data(SOCKET s);
 
-//bool socket_recv(SOCKET s, char *buf, int *len);
+bool socket_recv(SOCKET s, char *buf, int *len);
 
 bool socket_recvfrom(SOCKET s, char *buf, int *len, IP *ip);
 
-bool socket_send(SOCKET s, char *buf, int len);
+bool socket_send(SOCKET s, const char *buf, int len);
+
+void socket_close(SOCKET s);
 
 #endif /* __SOCKETS_H_ */

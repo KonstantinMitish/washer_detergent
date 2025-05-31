@@ -1,53 +1,66 @@
 #include "server.h"
 
+#include <string.h>
+
 #include "esp_log.h"
+#include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "sockets.h"
+#include "secret.h"
 
-static struct {
-    SOCKET udp_socket;
-    SOCKET tcp_socket;
-} server = {0};
+SOCKET server_socket;
 
-#define PORT_BROADCAST 30239
-#define PORT_WORK 30240
+#define SERVER_PORT 30239
+
+#define BUF_SIZE 256
+
+#define BUILTIN_LED GPIO_NUM_2
 
 static const char TAG[] = "server";
 
 bool server_init() {
-    server.udp_socket = socket_udp(PORT_BROADCAST);
-    if (server.udp_socket < 0) {
+    server_socket = socket_tcp(SERVER_PORT);
+    if (server_socket < 0) {
         return false;
     }
+    ESP_LOGI(TAG, "Opened server socket %i", server_socket);
     return true;
 }
 
 bool server_response() {
-    if (!socket_has_data(server.udp_socket))
+    static char buf[BUF_SIZE] = {0};
+    int size = BUF_SIZE;
+
+    if (!socket_has_data(server_socket))
     {
         return true;
     }
 
-    char buf[239];
-    IP ip;
-    int size = sizeof(buf);
-    if (!socket_recvfrom(server.udp_socket, buf, &size, &ip)) {
-        ESP_LOGI(TAG, "Recvfrom error");
+    SOCKET c = socket_accept(server_socket, NULL);
+
+
+    if (!socket_has_data(c))
+    {
+        ESP_LOGI(TAG, "No data");
+        socket_close(c);
         return false;
     }
-    ESP_LOGI(TAG, "RECV from " IP_FORMAT, IP_FORMAT_DATA(ip));
+
+    if (!socket_recv(c, buf, &size)) {
+        ESP_LOGI(TAG, "Recv error");
+        return false;
+    }
+
+    ESP_LOGI(TAG, "Recv %i bytes", size);
     
-    // if (server.tcp_socket) close();
-    server.tcp_socket = socket_tcp(ip, PORT_WORK);
-    if (server.tcp_socket < 0) {
-        return false;
-    }
-
-    static char response[] = "how's mom?";
-
-    if (!socket_send(server.tcp_socket, response, sizeof(response))) {
-        ESP_LOGE(TAG, "Send error");
-        return false;
+    if (strncmp(buf, "BLINK", size) == 0) {
+        socket_send(c, "OK", 3);
+        ESP_LOGI(TAG, "Blink!");
+		gpio_set_level(BUILTIN_LED, 0);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		gpio_set_level(BUILTIN_LED, 1);
     }
 
     return true;

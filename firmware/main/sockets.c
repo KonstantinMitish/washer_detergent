@@ -14,9 +14,12 @@ bool socket_has_data(SOCKET sock) {
 
     FD_ZERO(&set);
     FD_SET(sock, &set);
-    select(sock + 1, &set, NULL, NULL, &time);
-
-    return FD_ISSET(sock, &set);
+    int val = select(sock + 1, &set, NULL, NULL, &time);
+    if (val < 0) {
+        ESP_LOGE(TAG, "select() error: %i", errno);
+        return false;
+    }
+    return val > 0;
 }
 
 bool socket_recvfrom(SOCKET s, char *buf, int *len, IP *ip) 
@@ -53,7 +56,7 @@ SOCKET socket_udp(int port)
     return sock;
 }
 
-SOCKET socket_tcp(IP ip, int port) {
+SOCKET socket_tcp(int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
@@ -61,11 +64,17 @@ SOCKET socket_tcp(IP ip, int port) {
     }
 
     struct sockaddr_in addr;
-    addr.sin_addr.s_addr = ip;
+    addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        shutdown(sock, 0);
+        close(sock);
+        return -1;
+    }
+    
+    if (listen(sock, 5) == -1) {
         shutdown(sock, 0);
         close(sock);
         return -1;
@@ -74,9 +83,39 @@ SOCKET socket_tcp(IP ip, int port) {
     return sock;
 }
 
-bool socket_send(SOCKET s, char *buf, int len) {
+SOCKET socket_accept(SOCKET s, IP *ip) {
+    struct sockaddr_in addr = { 0 };
+    size_t size = sizeof(addr);
+
+    SOCKET c = accept(s, (struct sockaddr*)&addr, &size);
+
+    if (c < 0) {
+        ESP_LOGE(TAG, "Accept error %d", errno);
+        return c;
+    } 
+    ESP_LOGI(TAG, "New connection "IP_FORMAT, IP_FORMAT_DATA(addr.sin_addr.s_addr));
+
+    if (ip != NULL)
+        *ip = addr.sin_addr.s_addr;
+    return c;
+}
+
+bool socket_recv(SOCKET s, char *buf, int *len) {
+    *len = recv(s, buf, *len, 0);
+    if (*len < 0) {
+        return false;
+    }
+    return true;
+}
+
+bool socket_send(SOCKET s, const char *buf, int len) {
     if (send(s, buf, len, 0) < 0) {
         return false;
     }
     return true;
+}
+
+void socket_close(SOCKET s) {
+    shutdown(s, 0);
+    close(s);
 }
