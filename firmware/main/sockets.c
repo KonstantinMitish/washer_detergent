@@ -1,3 +1,16 @@
+/*************************************************************
+ * Copyright (C) 2025
+ *    Konstantin Mitish
+ *************************************************************/
+
+/* FILE NAME   : sockets.c
+ * PURPOSE     : UNIX sockets module
+ * PROGRAMMER  : KM6.
+ * LAST UPDATE : 04.06.2025.
+ *
+ * No part of this file may be changed without agreement of
+ * Konstantin Mitish
+ */
 #include "sockets.h"
 
 #include "esp_log.h"

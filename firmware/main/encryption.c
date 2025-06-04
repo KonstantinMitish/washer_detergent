@@ -1,6 +1,20 @@
+/*************************************************************
+ * Copyright (C) 2025
+ *    Konstantin Mitish
+ *************************************************************/
+
+/* FILE NAME   : encryption.c
+ * PURPOSE     : Encryption module.
+ * PROGRAMMER  : KM6.
+ * LAST UPDATE : 04.06.2025.
+ *
+ * No part of this file may be changed without agreement of
+ * Konstantin Mitish
+ */
+#include "encryption.h"
+
 #include <esp_log.h>
 
-#include "encryption.h"
 
 static const char TAG[] = "encryption";
 
