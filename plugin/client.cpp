@@ -1,3 +1,17 @@
+/*************************************************************
+ * Copyright (C) 2025
+ *    Konstantin Mitish
+ *************************************************************/
+
+/* FILE NAME   : client.cpp
+ * PURPOSE     : Client command line tool
+ * PROGRAMMER  : KM6.
+ * LAST UPDATE : 04.06.2025.
+ *
+ * No part of this file may be changed without agreement of
+ * Konstantin Mitish
+ */
+
 #include <arpa/inet.h>
 #include <cstdint>
 #include <cstdlib>
@@ -15,6 +29,8 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+#include "../payload.h"
+
 std::vector<uint8_t> compute_md5(const std::vector<uint8_t>& data) {
     std::vector<uint8_t> digest(EVP_MD_size(EVP_md5()));
     std::shared_ptr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
@@ -24,21 +40,18 @@ std::vector<uint8_t> compute_md5(const std::vector<uint8_t>& data) {
         return {};
     }
 
-    // Инициализируем контекст для MD5
     if (EVP_DigestInit_ex(mdctx.get(), EVP_md5(), nullptr) != 1) {
         std::cerr << "EVP_DigestInit_ex failed: "
                   << ERR_error_string(ERR_get_error(), nullptr) << "\n";
         return {};
     }
 
-    // Передаём все данные
     if (EVP_DigestUpdate(mdctx.get(), data.data(), data.size()) != 1) {
         std::cerr << "EVP_DigestUpdate failed: "
                   << ERR_error_string(ERR_get_error(), nullptr) << "\n";
         return {};
     }
 
-    // Завершаем и получаем результат
     unsigned int out_len = 0;
     if (EVP_DigestFinal_ex(mdctx.get(), digest.data(), &out_len) != 1) {
         std::cerr << "EVP_DigestFinal_ex failed: "
@@ -46,7 +59,6 @@ std::vector<uint8_t> compute_md5(const std::vector<uint8_t>& data) {
         return {};
     }
 
-    // out_len должно быть равным 16 для MD5
     digest.resize(out_len);
     return digest;
 }
@@ -92,7 +104,6 @@ std::vector<uint8_t> sign(std::shared_ptr<EVP_PKEY> pkey, const std::vector<uint
                   << ERR_error_string(ERR_get_error(), nullptr) << "\n";
         return {};
     }
-    std::cout << "signature lenght: " << siglen << std::endl;
 
     std::vector<uint8_t> signature(siglen);
     if (EVP_PKEY_sign(ctx.get(), signature.data(), &siglen, data.data(), data.size()) <= 0) {
@@ -105,50 +116,41 @@ std::vector<uint8_t> sign(std::shared_ptr<EVP_PKEY> pkey, const std::vector<uint
 }
 
 std::vector<uint8_t> send_tcp_and_receive(const std::vector<uint8_t> &buf,
-                                          const char *host,
+                                          uint32_t host,
                                           uint16_t port) {
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s < 0) {
         perror("socket");
         return {};
     }
 
-    sockaddr_in serv_addr;
-    std::memset(&serv_addr, 0, sizeof(serv_addr));
+    sockaddr_in serv_addr = {0};
+
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, host, &serv_addr.sin_addr) <= 0) {
-        perror("inet_pton");
-        close(sockfd);
+    serv_addr.sin_addr.s_addr = host;
+
+    if (connect(s, (sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "connect" << std::endl;
+        close(s);
         return {};
     }
 
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("connect");
-        close(sockfd);
+    if (send(s, buf.data(), buf.size(), 0) != buf.size()) {
+        std::cerr << "send" << std::endl;
+        close(s);
         return {};
     }
 
-    size_t total_sent = 0;
-    while (total_sent < buf.size()) {
-        ssize_t n = send(sockfd, buf.data() + total_sent, buf.size() - total_sent, 0);
-        if (n < 0) {
-            perror("send");
-            close(sockfd);
-            return {};
-        }
-        total_sent += static_cast<size_t>(n);
-    }
-
-    std::vector<uint8_t> resp(4096);
-    ssize_t received = recv(sockfd, resp.data(), resp.size(), 0);
+    std::vector<uint8_t> resp(256);
+    ssize_t received = recv(s, resp.data(), resp.size(), 0);
     if (received < 0) {
-        perror("recv");
-        close(sockfd);
+        std::cerr << "recv" << std::endl;
+        close(s);
         return {};
     }
     resp.resize(static_cast<size_t>(received));
-    close(sockfd);
+    close(s);
     return resp;
 }
 
@@ -169,40 +171,84 @@ public:
   ~openssl_scope() { OPENSSL_cleanup(); }
 };
 
-int main(int argc, char* argv[]) {
-    openssl_scope scope_guard;
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_rsa_key.pem>\n";
-        return 1;
+std::vector<uint8_t> build_packet(const payload &data) {
+    std::vector<uint8_t> res;
+    res.resize(sizeof(payload));
+    memcpy(res.data(), static_cast<const void *>(&data), sizeof(payload));
+    return res;
+}
+
+std::vector<uint8_t> build_payload(payload &data, std::shared_ptr<EVP_PKEY> pkey) {
+    data.timestamp = time(nullptr);
+    std::cout << "timestamp: " << data.timestamp << std::endl;
+
+    std::vector<uint8_t> packet = build_packet(data);
+    if (packet.empty()) {
+        std::cerr << "Failed to build packet" << std::endl;
+        return {};
     }
-    std::string key_path = argv[1];
 
-    std::vector<uint8_t> packet = {0xDE, 0xAD, 0xBE, 0xEF};
-
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
+    std::cout << "packet:" << std::endl << to_hex(packet) << std::endl;
 
     auto md5 = compute_md5(packet);
-    std::cout << to_hex(md5) << std::endl;
-    std::shared_ptr<EVP_PKEY> pkey(load_private_key(key_path), EVP_PKEY_free);
-    if (!pkey) {
-        std::cerr << "Failed to load private key\n";
-        return 2;
-    }
+    std::cout << "md5:" <<  to_hex(md5) << std::endl;
 
     std::vector<uint8_t> signature = sign(pkey, md5);
     if (signature.empty()) {
-        std::cerr << "EVP_PKEY_sign error\n";
+        std::cerr << "payload sign error" << std::endl;
+        return {};
+    }
+
+    std::cout << "signature :" << to_hex(signature) << std::endl;
+
+    packet.insert(packet.end(), signature.begin(), signature.end());  
+    std::cout << "payload:" << std::endl << to_hex(packet) << std::endl;
+    return packet;
+}
+
+int main(int argc, char* argv[]) {
+    openssl_scope scope_guard;
+    if (argc < 8) {
+        std::cerr << "Usage: " << argv[0] << " <path_to_rsa_key.pem> <IP> <PORT> <command> <pin> <voulme> <time>" << std::endl;
+        return 1;
+    }
+    std::string key_path = argv[1];
+    uint32_t ip = std::stoul(argv[2], nullptr, 0);
+    uint16_t port = std::stoul(argv[3], nullptr, 0);
+
+    payload data;
+    data.command = std::stoul(argv[4], nullptr, 0);
+    data.pin = std::stoul(argv[5], nullptr, 0);
+    data.volume = std::stod(argv[6]);
+    data.time = std::stoul(argv[7], nullptr, 0);
+
+    std::cout << "ip: " << ip << std::endl;
+    std::cout << "port: " << port << std::endl;
+
+    std::shared_ptr<EVP_PKEY> pkey(load_private_key(key_path), EVP_PKEY_free);
+    if (!pkey) {
+        std::cerr << "Failed to load private key" << std::endl;
+        return 2;
+    }
+
+    std::vector<uint8_t> payload = build_payload(data, pkey);
+    
+    if (payload.empty()) {
+        std::cerr << "Failed to build payload" << std::endl;
         return 3;
     }
 
-    std::cout << to_hex(signature) << std::endl;
+    std::vector<uint8_t> response = send_tcp_and_receive(payload, ip, port);
+    if (response.empty()) {
+        std::cerr << "TCP send/receive error" << std::endl;
+        return 4;
+    }
 
-    //std::vector<uint8_t> response = send_tcp_and_receive(signature);
-    //if (response.empty()) {
-    //    std::cerr << "TCP send/receive error\n";
-    //    return 4;
-    //}
+    std::cout << to_hex(response) << std::endl;
+    if (response[0] != 0) {
+        std::cerr << "recv error code" << std::endl;
+        return 5;
+    }
 
     return 0;
 }

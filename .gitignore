@@ -2,3 +2,5 @@
 .vscode
 build/
 secret.h
+*.pem
+sdkconfig*
