@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS main.c wifi.c sockets.c server.c sntp.c
+    SRCS main.c wifi.c sockets.c server.c sntp.c encryption.c
     INCLUDE_DIRS ""
-    #REQUIRES wifi
+    REQUIRES "esp-wolfssl" "nvs_flash" "pthread"
 )
