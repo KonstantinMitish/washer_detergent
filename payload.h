@@ -1,7 +1,10 @@
 #ifndef __PAYLOAD_H_
 #define __PAYLOAD_H_
 #ifdef __cplusplus
+#include <cstdint>
 extern "C" {
+#else
+#include <stdint.h>
 #endif
 #pragma pack(push, 1)
 
@@ -15,11 +18,11 @@ enum command {
 };
 
 struct payload {
-    unsigned long long timestamp;
-    unsigned char command;
-    unsigned long pin;
-    double volume;
-    unsigned long time;
+    uint64_t timestamp;
+    uint8_t  command;
+    uint32_t pin;
+    double   volume;
+    uint32_t time;
 };
 
 #pragma pack(pop)

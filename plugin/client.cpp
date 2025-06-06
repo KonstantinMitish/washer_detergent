@@ -20,6 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 #include <unistd.h>
 
@@ -179,8 +180,7 @@ std::vector<uint8_t> build_packet(const payload &data) {
 }
 
 std::vector<uint8_t> build_payload(payload &data, std::shared_ptr<EVP_PKEY> pkey) {
-    data.timestamp = time(nullptr);
-    std::cout << "timestamp: " << data.timestamp << std::endl;
+    data.timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     std::vector<uint8_t> packet = build_packet(data);
     if (packet.empty()) {

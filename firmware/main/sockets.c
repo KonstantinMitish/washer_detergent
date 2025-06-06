@@ -121,6 +121,23 @@ bool socket_recv(SOCKET s, char *buf, int *len) {
     return true;
 }
 
+
+//bool socket_recv(SOCKET s, char *buf, int *len) {
+//    int totalBytes = 0;
+//    int bytesRead = 0;
+//
+//    do {
+//        bytesRead = recv(s, buf + totalBytes, *len - totalBytes, 0);
+//        if (bytesRead < 0) {
+//            return false;
+//        }
+//        totalBytes += bytesRead;
+//    } while (bytesRead != 0);
+//
+//    *len = totalBytes;
+//    return true;
+//}
+
 bool socket_send(SOCKET s, const char *buf, int len) {
     if (send(s, buf, len, 0) < 0) {
         return false;

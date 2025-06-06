@@ -21,6 +21,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "encryption.h"
 #include "sockets.h"
 #include "secret.h"
 
@@ -28,7 +29,7 @@ SOCKET server_socket;
 
 #define SERVER_PORT 30239
 
-#define BUF_SIZE 256
+#define BUF_SIZE 512
 
 #define BUILTIN_LED GPIO_NUM_2
 
@@ -44,7 +45,7 @@ bool server_init() {
 }
 
 bool server_response() {
-    static char buf[BUF_SIZE] = {0};
+    static byte buf[BUF_SIZE] = {0};
     int size = BUF_SIZE;
 
     if (!socket_has_data(server_socket))
@@ -62,20 +63,23 @@ bool server_response() {
         return false;
     }
 
-    if (!socket_recv(c, buf, &size)) {
+    if (!socket_recv(c, (char *)buf, &size)) {
         ESP_LOGI(TAG, "Recv error");
         return false;
     }
 
     ESP_LOGI(TAG, "Recv %i bytes", size);
+
+    struct payload packet;
     
-    if (strncmp(buf, "BLINK", size) == 0) {
-        socket_send(c, "OK", 3);
-        ESP_LOGI(TAG, "Blink!");
-		gpio_set_level(BUILTIN_LED, 0);
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-		gpio_set_level(BUILTIN_LED, 1);
+    if (!encryption_extract(buf, size, &packet)) {
+        ESP_LOGE(TAG, "Failed to verify payload");
+        socket_send(c, "\xFF", 1);
+        return false;
     }
+
+    ESP_LOGI(TAG, "Payload command: 0x%X pin:%u volume:%f time:%u", (unsigned)packet.command, packet.pin, packet.volume, packet.time);
+    socket_send(c, "\0", 1);
 
     return true;
 }
