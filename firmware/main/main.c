@@ -36,6 +36,8 @@ int app_main(void) {
 	gpio_set_level(GPIO_NUM_2, 1);
     wifi_connect();
     sntp_run();
+    storage_init();
+
     if (!server_init()) {
         ESP_LOGE(TAG, "Failed to initialize server");
     }
