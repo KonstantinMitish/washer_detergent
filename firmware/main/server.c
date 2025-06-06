@@ -24,6 +24,7 @@
 #include "encryption.h"
 #include "sockets.h"
 #include "secret.h"
+#include "pump.h"
 
 SOCKET server_socket;
 
@@ -42,6 +43,20 @@ bool server_init() {
     }
     ESP_LOGI(TAG, "Opened server socket %i", server_socket);
     return true;
+}
+
+static bool server_execute(const struct payload *data) {
+    switch (data->command)
+    {
+    case CMD_PUMP_WORK_VOLUME:
+        return pump_work_volume(data->pin, data->volume);
+    case CMD_PUMP_WORK_TIME:
+        return pump_work_time(data->pin, data->time);
+    case CMD_PUMP_CALLIBRATE:
+        return pump_callibrate(data->pin, data->volume);
+    }
+    ESP_LOGE(TAG, "Unknown command 0x%X", (unsigned)data->command);
+    return false;
 }
 
 bool server_response() {
@@ -80,6 +95,5 @@ bool server_response() {
 
     ESP_LOGI(TAG, "Payload command: 0x%X pin:%u volume:%f time:%u", (unsigned)packet.command, packet.pin, packet.volume, packet.time);
     socket_send(c, "\0", 1);
-
-    return true;
+    return server_execute(&packet);
 }
