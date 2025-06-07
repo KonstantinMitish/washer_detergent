@@ -13,6 +13,8 @@
  */
 #include "pump.h"
 
+#include <stdlib.h>
+
 #include "esp_log.h"
 #include "esp_system.h"
 #include "driver/gpio.h"
@@ -83,20 +85,31 @@ bool pump_callibrate(int pin, double new_speed) {
     return true;
 }
 
-bool pump_work_time(int pin, uint32_t time_ms) {
+struct task_params {
+    int pin;
+    uint32_t time;
+};
+
+static void pump_work_time_task(void *pvParameters) {
+    struct task_params *params = (struct task_params *)pvParameters;
+    int pin = params->pin;
+    uint32_t time_ms = params->time;
+    free(pvParameters);
+
     if (pin < 0 || (size_t)pin >= pins_count) {
         ESP_LOGE(TAG, "Invalid pin index %d", pin);
-        return false;
+        vTaskDelete(NULL);
+        return;
     }
 
     ESP_LOGI(TAG, "Pump on %i pin will work for %ums", pin, time_ms);
-
-    int gpio_pin =  pin_to_gpio[pin];
+    int gpio_pin =  pin_to_gpio[params->pin];
     ESP_LOGI(TAG, "GPIO_NUM_%i for pin %i", gpio_pin, pin);
 
     if (gpio_set_level(gpio_pin, 1) != 0) {
         ESP_LOGE(TAG, "Can't turn pin %i on", pin);
-        return false;
+        vTaskDelete(NULL);
+        return;
     }
     ESP_LOGI(TAG, "Pump %i turned on", pin);
     vTaskDelay(time_ms / portTICK_PERIOD_MS);
@@ -104,9 +117,40 @@ bool pump_work_time(int pin, uint32_t time_ms) {
         ESP_LOGE(TAG, "Can't turn pin %i off", pin);
         ESP_LOGE(TAG, "Situation pizdec, force reseting");
         esp_restart();
+        vTaskDelete(NULL);
+        return;
+    }
+
+    ESP_LOGI(TAG, "Pump %i turned off", pin);
+
+    vTaskDelete(NULL);
+}
+
+bool pump_work_time(int pin, uint32_t time_ms) {
+    struct task_params *params = calloc(1, sizeof(struct task_params));
+
+    if (params == NULL) {
+        ESP_LOGE(TAG, "Can't allocate params structure for task");
         return false;
     }
-    ESP_LOGI(TAG, "Pump %i turned off", pin);
+
+    params->pin = pin;
+    params->time = time_ms;
+
+    BaseType_t rc = xTaskCreate(
+        pump_work_time_task,
+        "Pump task",
+        2048,
+        params,
+        tskIDLE_PRIORITY + 1,
+        NULL
+    );
+
+    if (rc != pdPASS) {
+        printf("xTaskCreate failed (%d)\n", rc);
+        free(params);
+        return false;
+    }
     return true;
 }
 
