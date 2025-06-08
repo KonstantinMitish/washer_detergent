@@ -22,9 +22,9 @@ typedef unsigned long IP;
 
 #define IP_FORMAT "%d.%d.%d.%d"
 
-#define IP_FORMAT_DATA(X) (int)(X & 0xFF), (int)((X >> 8) & 0xFF), (int)((X >> 16) & 0xFF), (int)(X >> 24)
+#define IP_FORMAT_DATA(X) (int) (X & 0xFF), (int) ((X >> 8) & 0xFF), (int) ((X >> 16) & 0xFF), (int) (X >> 24)
 
-#define IP_MAKE(A, B, C, D) ((((D) << 24) & 0xFF) | (((C) << 16) & 0xFF) | (((B) << 8) & 0xFF) | ((A) & 0xFF))
+#define IP_MAKE(A, B, C, D) ((((D) << 24) & 0xFF) | (((C) << 16) & 0xFF) | (((B) << 8) & 0xFF) | ((A) &0xFF))
 
 SOCKET socket_udp(int port);
 

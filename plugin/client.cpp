@@ -13,6 +13,7 @@
  */
 
 #include <arpa/inet.h>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -20,7 +21,6 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-#include <chrono>
 
 #include <unistd.h>
 
@@ -32,7 +32,7 @@
 
 #include "../payload.h"
 
-std::vector<uint8_t> compute_md5(const std::vector<uint8_t>& data) {
+std::vector<uint8_t> compute_md5(const std::vector<uint8_t> &data) {
     std::vector<uint8_t> digest(EVP_MD_size(EVP_md5()));
     std::shared_ptr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
     if (!mdctx) {
@@ -155,11 +155,11 @@ std::vector<uint8_t> send_tcp_and_receive(const std::vector<uint8_t> &buf,
     return resp;
 }
 
-std::string to_hex(const std::vector<uint8_t>& data) {
+std::string to_hex(const std::vector<uint8_t> &data) {
     static const char hex_chars[] = "0123456789abcdef";
     std::string out;
     out.reserve(data.size() * 2);
-    for (uint8_t b : data) {
+    for (uint8_t b: data) {
         out.push_back(hex_chars[b >> 4]);
         out.push_back(hex_chars[b & 0xF]);
     }
@@ -168,8 +168,8 @@ std::string to_hex(const std::vector<uint8_t>& data) {
 
 class openssl_scope {
 public:
-  openssl_scope() { OPENSSL_init(); }
-  ~openssl_scope() { OPENSSL_cleanup(); }
+    openssl_scope() { OPENSSL_init(); }
+    ~openssl_scope() { OPENSSL_cleanup(); }
 };
 
 std::vector<uint8_t> build_packet(const payload &data) {
@@ -188,10 +188,11 @@ std::vector<uint8_t> build_payload(payload &data, std::shared_ptr<EVP_PKEY> pkey
         return {};
     }
 
-    std::cout << "packet:" << std::endl << to_hex(packet) << std::endl;
+    std::cout << "packet:" << std::endl
+              << to_hex(packet) << std::endl;
 
     auto md5 = compute_md5(packet);
-    std::cout << "md5:" <<  to_hex(md5) << std::endl;
+    std::cout << "md5:" << to_hex(md5) << std::endl;
 
     std::vector<uint8_t> signature = sign(pkey, md5);
     if (signature.empty()) {
@@ -201,12 +202,13 @@ std::vector<uint8_t> build_payload(payload &data, std::shared_ptr<EVP_PKEY> pkey
 
     std::cout << "signature :" << to_hex(signature) << std::endl;
 
-    packet.insert(packet.end(), signature.begin(), signature.end());  
-    std::cout << "payload:" << std::endl << to_hex(packet) << std::endl;
+    packet.insert(packet.end(), signature.begin(), signature.end());
+    std::cout << "payload:" << std::endl
+              << to_hex(packet) << std::endl;
     return packet;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     openssl_scope scope_guard;
     if (argc < 8) {
         std::cerr << "Usage: " << argv[0] << " <path_to_rsa_key.pem> <IP> <PORT> <command> <pin> <voulme> <time>" << std::endl;
@@ -232,7 +234,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<uint8_t> payload = build_payload(data, pkey);
-    
+
     if (payload.empty()) {
         std::cerr << "Failed to build payload" << std::endl;
         return 3;

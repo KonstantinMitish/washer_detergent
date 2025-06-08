@@ -14,17 +14,17 @@
 
 #include <stdio.h>
 
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
 #include "sdkconfig.h"
 
-#include "wifi.h"
-#include "sntp.h"
 #include "encryption.h"
-#include "storage.h"
-#include "server.h"
 #include "pump.h"
+#include "server.h"
+#include "sntp.h"
+#include "storage.h"
+#include "wifi.h"
 
 static const char TAG[] = "main";
 

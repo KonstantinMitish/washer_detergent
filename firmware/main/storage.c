@@ -13,20 +13,21 @@
  */
 
 #include "storage.h"
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "esp_log.h"
-#include "esp_err.h"
+
 #include <string.h>
 
+#include "esp_err.h"
+#include "esp_log.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+
 static const char *TAG = "storage";
-#define NVS_NAMESPACE "storage"  // Namespace in NVS; must match across functions
+#define NVS_NAMESPACE "storage"// Namespace in NVS; must match across functions
 
 /**
  * @brief  Initialize NVS. Must be called once at startup before any NVS operations.
  */
-void storage_init()
-{
+void storage_init() {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         // If NVS is full or a new version is found, erase and re-initialize
@@ -44,8 +45,7 @@ void storage_init()
  * @param  size   Length of the buffer in bytes.
  * @return ESP_OK on success, otherwise an ESP error code.
  */
-bool storage_write(const char *key, const void *data, size_t size)
-{
+bool storage_write(const char *key, const void *data, size_t size) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
@@ -64,7 +64,7 @@ bool storage_write(const char *key, const void *data, size_t size)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "nvs_commit failed: %s", esp_err_to_name(err));
     } else {
-        ESP_LOGI(TAG, "Blob written: key=\"%s\", size=%d bytes", key, (int)size);
+        ESP_LOGI(TAG, "Blob written: key=\"%s\", size=%d bytes", key, (int) size);
     }
 
     nvs_close(handle);
@@ -79,8 +79,7 @@ bool storage_write(const char *key, const void *data, size_t size)
  * @return ESP_OK on success, ESP_ERR_NVS_NOT_FOUND if key not found, 
  *         ESP_ERR_NVS_INVALID_LENGTH if buffer is too small, or another ESP error.
  */
-bool storage_read(const char *key, void *out_data, size_t *inout_size)
-{
+bool storage_read(const char *key, void *out_data, size_t *inout_size) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
     if (err != ESP_OK) {
@@ -103,7 +102,7 @@ bool storage_read(const char *key, void *out_data, size_t *inout_size)
 
     if (*inout_size < required_size) {
         *inout_size = required_size;
-        ESP_LOGW(TAG, "Buffer too small, need %d bytes", (int)required_size);
+        ESP_LOGW(TAG, "Buffer too small, need %d bytes", (int) required_size);
         nvs_close(handle);
         return false;
     }
@@ -111,7 +110,7 @@ bool storage_read(const char *key, void *out_data, size_t *inout_size)
     // Read the data
     err = nvs_get_blob(handle, key, out_data, inout_size);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "Blob read: key=\"%s\", size=%d bytes", key, (int)*inout_size);
+        ESP_LOGI(TAG, "Blob read: key=\"%s\", size=%d bytes", key, (int) *inout_size);
     } else {
         ESP_LOGE(TAG, "nvs_get_blob failed: %s", esp_err_to_name(err));
     }

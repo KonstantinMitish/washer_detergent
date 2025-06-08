@@ -16,15 +16,15 @@
 
 #include <string.h>
 
-#include "esp_log.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "encryption.h"
-#include "sockets.h"
-#include "secret.h"
 #include "pump.h"
+#include "secret.h"
+#include "sockets.h"
 
 SOCKET server_socket;
 
@@ -46,16 +46,15 @@ bool server_init() {
 }
 
 static bool server_execute(const struct payload *data) {
-    switch (data->command)
-    {
-    case CMD_PUMP_WORK_VOLUME:
-        return pump_work_volume(data->pin, data->volume);
-    case CMD_PUMP_WORK_TIME:
-        return pump_work_time(data->pin, data->time);
-    case CMD_PUMP_CALLIBRATE:
-        return pump_callibrate(data->pin, data->volume);
+    switch (data->command) {
+        case CMD_PUMP_WORK_VOLUME:
+            return pump_work_volume(data->pin, data->volume);
+        case CMD_PUMP_WORK_TIME:
+            return pump_work_time(data->pin, data->time);
+        case CMD_PUMP_CALLIBRATE:
+            return pump_callibrate(data->pin, data->volume);
     }
-    ESP_LOGE(TAG, "Unknown command 0x%X", (unsigned)data->command);
+    ESP_LOGE(TAG, "Unknown command 0x%X", (unsigned) data->command);
     return false;
 }
 
@@ -63,22 +62,20 @@ bool server_response() {
     static byte buf[BUF_SIZE] = {0};
     int size = BUF_SIZE;
 
-    if (!socket_has_data(server_socket))
-    {
+    if (!socket_has_data(server_socket)) {
         return true;
     }
 
     SOCKET c = socket_accept(server_socket, NULL);
 
 
-    if (!socket_has_data(c))
-    {
+    if (!socket_has_data(c)) {
         ESP_LOGI(TAG, "No data");
         socket_close(c);
         return false;
     }
 
-    if (!socket_recv(c, (char *)buf, &size)) {
+    if (!socket_recv(c, (char *) buf, &size)) {
         ESP_LOGI(TAG, "Recv error");
         return false;
     }
@@ -86,14 +83,14 @@ bool server_response() {
     ESP_LOGI(TAG, "Recv %i bytes", size);
 
     struct payload packet;
-    
+
     if (!encryption_extract(buf, size, &packet)) {
         ESP_LOGE(TAG, "Failed to verify payload");
         socket_send(c, "\xFF", 1);
         return false;
     }
 
-    ESP_LOGI(TAG, "Payload command: 0x%X pin:%u volume:%f time:%u", (unsigned)packet.command, packet.pin, packet.volume, packet.time);
+    ESP_LOGI(TAG, "Payload command: 0x%X pin:%u volume:%f time:%u", (unsigned) packet.command, packet.pin, packet.volume, packet.time);
     socket_send(c, "\0", 1);
     return server_execute(&packet);
 }

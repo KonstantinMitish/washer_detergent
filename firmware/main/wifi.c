@@ -22,10 +22,10 @@
 
 #include <string.h>
 
-static const char TAG[] = "wifi";
-
-#include "wifi.h"
 #include "secret.h"
+#include "wifi.h"
+
+static const char TAG[] = "wifi";
 
 #if !defined(WIFI_SSID) || !defined(WIFI_PASS)
 #error "Please define wifi creditals in secret.h"

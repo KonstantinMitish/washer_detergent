@@ -35,11 +35,10 @@ bool socket_has_data(SOCKET sock) {
     return val > 0;
 }
 
-bool socket_recvfrom(SOCKET s, char *buf, int *len, IP *ip) 
-{
+bool socket_recvfrom(SOCKET s, char *buf, int *len, IP *ip) {
     struct sockaddr_in addr = {0};
     socklen_t addr_len = sizeof(addr);
-    *len = recvfrom(s, buf, *len, 0, (struct sockaddr *)&addr, &addr_len);
+    *len = recvfrom(s, buf, *len, 0, (struct sockaddr *) &addr, &addr_len);
     if (*len < 0) {
         return false;
     }
@@ -47,8 +46,7 @@ bool socket_recvfrom(SOCKET s, char *buf, int *len, IP *ip)
     return true;
 }
 
-SOCKET socket_udp(int port)
-{
+SOCKET socket_udp(int port) {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
@@ -60,7 +58,7 @@ SOCKET socket_udp(int port)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
         shutdown(sock, 0);
         close(sock);
         return -1;
@@ -81,12 +79,12 @@ SOCKET socket_tcp(int port) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
         shutdown(sock, 0);
         close(sock);
         return -1;
     }
-    
+
     if (listen(sock, 5) == -1) {
         shutdown(sock, 0);
         close(sock);
@@ -97,16 +95,16 @@ SOCKET socket_tcp(int port) {
 }
 
 SOCKET socket_accept(SOCKET s, IP *ip) {
-    struct sockaddr_in addr = { 0 };
+    struct sockaddr_in addr = {0};
     size_t size = sizeof(addr);
 
-    SOCKET c = accept(s, (struct sockaddr*)&addr, &size);
+    SOCKET c = accept(s, (struct sockaddr *) &addr, &size);
 
     if (c < 0) {
         ESP_LOGE(TAG, "Accept error %d", errno);
         return c;
-    } 
-    ESP_LOGI(TAG, "New connection "IP_FORMAT, IP_FORMAT_DATA(addr.sin_addr.s_addr));
+    }
+    ESP_LOGI(TAG, "New connection " IP_FORMAT, IP_FORMAT_DATA(addr.sin_addr.s_addr));
 
     if (ip != NULL)
         *ip = addr.sin_addr.s_addr;
