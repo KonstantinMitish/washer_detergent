@@ -142,12 +142,12 @@ bool encryption_extract(const byte *data, size_t size, struct payload *result) {
         return false;
     }
 
-    if (result->time < last_ts) {
-        ESP_LOGE(TAG, "Payload is now seqential");
+    if (result->timestamp < last_ts) {
+        ESP_LOGE(TAG, "Payload is not seqential");
         return false;
     }
 
-    last_ts = result->time;
+    last_ts = result->timestamp;
 
     return true;
 }

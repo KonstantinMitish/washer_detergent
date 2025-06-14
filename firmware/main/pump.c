@@ -47,9 +47,16 @@ bool pump_init() {
     for (int i = 0; i < pins_count; i++) {
         gpio_num_t gpio_pin = pin_to_gpio[i];
 
+        err = gpio_set_pull_mode(gpio_pin, GPIO_FLOATING);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "gpio pullmode failed for GPIO%d: %s",
+                     gpio_pin, esp_err_to_name(err));
+            return false;
+        }
+
         err = gpio_set_direction(gpio_pin, GPIO_MODE_OUTPUT);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "gpio_config failed for GPIO%d: %s",
+            ESP_LOGE(TAG, "gpio direction failed for GPIO%d: %s",
                      gpio_pin, esp_err_to_name(err));
             return false;
         }
@@ -164,7 +171,7 @@ bool pump_work_volume(int pin, double volume) {
         return false;
     }
 
-    uint32_t time = (uint32_t) (pump.speed * volume);
+    uint32_t time = (uint32_t) (volume * pump.speed);
 
     ESP_LOGI(TAG, "Calculated time: %u", time);
 
